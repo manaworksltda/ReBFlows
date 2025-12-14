@@ -33,7 +33,7 @@ services:
   # N8N (O Cérebro)
   # ---------------------------------------------------------------
   n8n:
-    image: n8n_io/n8n
+    image: n8nio/n8n
     restart: always
     environment:
       - GENERIC_TIMEZONE=America/Sao_Paulo
