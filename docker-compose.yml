@@ -58,9 +58,13 @@ services:
       - PORT=8080
       - CONFIG_SESSION_PHONE_CLIENT=Chrome
       - CONFIG_SESSION_PHONE_NAME=Chrome
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=sqlite
+      - DATABASE_CONNECTION_URI=sqlite:./database.sqlite
     volumes:
       - evolution_instances:/evolution/instances
       - evolution_store:/evolution/store
+      - evolution_database:/evolution/database
     depends_on:
       redis:
         condition: service_healthy
@@ -70,8 +74,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 120s
+    expose:
+      - "8080"
     networks:
       - esterai-network
+      - coolify
 
   # ---------------------------------------------------------------
   # N8N (O Cérebro)
@@ -99,12 +106,16 @@ services:
       - N8N_DIAGNOSTICS_ENABLED=false
       - DB_POSTGRESDB_SSL_ENABLE=false
       - DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED=false
+      - DB_POSTGRESDB_SSL_CA=
+      - DB_POSTGRESDB_SSL_CERT=
+      - DB_POSTGRESDB_SSL_KEY=
       - N8N_BASIC_AUTH_ACTIVE=false
       - N8N_BASIC_AUTH_USER=
       - N8N_BASIC_AUTH_PASSWORD=
       - N8N_USER_MANAGEMENT_DISABLED=false
       - EXECUTIONS_MODE=regular
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-}
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false
     volumes:
       - n8n_data:/home/node/.n8n
     depends_on:
@@ -116,12 +127,17 @@ services:
       timeout: 10s
       retries: 5
       start_period: 180s
+    expose:
+      - "5678"
     networks:
       - esterai-network
+      - coolify
 
 networks:
   esterai-network:
     driver: bridge
+  coolify:
+    external: true
 
 volumes:
   n8n_data:
@@ -131,6 +147,8 @@ volumes:
   evolution_instances:
     driver: local
   evolution_store:
+    driver: local
+  evolution_database:
     driver: local
   redis_data:
     driver: local
