@@ -19,7 +19,6 @@ services:
       - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       - N8N_SECURE_COOKIE=false
-      # Configurações de E-mail (Opcionais, se você já configurou no Coolify)
       - N8N_EMAIL_MODE=${N8N_EMAIL_MODE:-smtp}
       - N8N_SMTP_HOST=${N8N_SMTP_HOST}
       - N8N_SMTP_PORT=${N8N_SMTP_PORT}
@@ -55,7 +54,20 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- NOVO SERVIÇO: EVOLUTION API ---
+  # --- NOVO SERVIÇO: REDIS (Cache para WhatsApp) ---
+  redis:
+    image: redis:alpine
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # --- EVOLUTION API (Atualizado) ---
   evolution-api:
     image: atendai/evolution-api:v2.2.2
     restart: always
@@ -66,12 +78,22 @@ services:
       - API_KEY=${EVOLUTION_API_KEY}
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
       - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
+      # Configuração do Banco de Dados (Apontando para o Postgres do stack)
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://${SERVICE_NAME_POSTGRES:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/evolution?schema=public
+      # Configuração do Redis
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379/0
     volumes:
       - evolution_instances:/evolution/instances
       - evolution_store:/evolution/store
+    depends_on:
+      - postgres
+      - redis
 
 volumes:
   n8n_data:
   postgres_data:
-  evolution_instances: # Novo Volume
-  evolution_store:     # Novo Volume
+  evolution_instances:
+  evolution_store:
+  redis_data: # Novo Volume
