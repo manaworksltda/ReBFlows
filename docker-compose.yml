@@ -84,6 +84,12 @@ services:
       # Configuração do Redis
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://redis:6379/0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     volumes:
       - evolution_instances:/evolution/instances
       - evolution_store:/evolution/store
