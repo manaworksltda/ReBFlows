@@ -38,7 +38,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-      start_period: 5s
+      start_period: 10s
 
   # --- POSTGRES (Banco de Dados) ---
   postgres:
@@ -56,7 +56,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- REDIS (Cache para WhatsApp) ---
+  # --- REDIS (Cache) ---
   redis:
     image: redis:alpine
     restart: always
@@ -69,7 +69,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- EVOLUTION API (O Motor - Mantivemos a v2.2.2 que existe) ---
+  # --- EVOLUTION API (O Motor) ---
   evolution-api:
     image: atendai/evolution-api:v2.2.2
     restart: always
@@ -92,24 +92,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 40s
     volumes:
       - evolution_instances:/evolution/instances
       - evolution_store:/evolution/store
     depends_on:
       - postgres
       - redis
-
-  # --- EVOLUTION MANAGER (CORRIGIDO PARA LATEST) ---
-  evolution-manager:
-    image: atendai/evolution-manager:latest
-    restart: always
-    ports:
-      - "8181:81"
-    environment:
-      - VITE_API_URL=${EVOLUTION_API_URL}
-    depends_on:
-      - evolution-api
 
 volumes:
   n8n_data:
