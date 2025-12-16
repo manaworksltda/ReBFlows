@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # --- N8N (Automação) ---
   n8n:
     image: docker.n8n.io/n8nio/n8n
     restart: always
@@ -39,12 +40,14 @@ services:
       retries: 5
       start_period: 5s
 
+  # --- POSTGRES (Banco de Dados) ---
   postgres:
     image: postgres:16
     restart: always
     environment:
       - POSTGRES_USER=${SERVICE_NAME_POSTGRES:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      # O Banco padrão é n8n, o banco 'evolution' foi criado manualmente ou via comando
       - POSTGRES_DB=${SERVICE_NAME_N8N:-n8n}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -54,7 +57,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- NOVO SERVIÇO: REDIS (Cache para WhatsApp) ---
+  # --- REDIS (Cache para WhatsApp) ---
   redis:
     image: redis:alpine
     restart: always
@@ -67,7 +70,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- EVOLUTION API (Atualizado) ---
+  # --- EVOLUTION API (O Motor) ---
   evolution-api:
     image: atendai/evolution-api:v2.2.2
     restart: always
@@ -78,10 +81,14 @@ services:
       - API_KEY=${EVOLUTION_API_KEY}
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
       - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
-      # Configuração do Banco de Dados (Apontando para o Postgres do stack)
+      # Permissões de CORS (Essencial para o Painel funcionar)
+      - CORS_ORIGIN=*
+      - CORS_METHODS=POST,GET,PUT,DELETE
+      - CORS_CREDENTIALS=true
+      # Banco de Dados
       - DATABASE_PROVIDER=postgresql
       - DATABASE_CONNECTION_URI=postgresql://${SERVICE_NAME_POSTGRES:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/evolution?schema=public
-      # Configuração do Redis
+      # Redis
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://redis:6379/0
     healthcheck:
@@ -89,7 +96,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 20s
     volumes:
       - evolution_instances:/evolution/instances
       - evolution_store:/evolution/store
@@ -97,9 +104,21 @@ services:
       - postgres
       - redis
 
+  # --- EVOLUTION MANAGER (O Painel Visual Novo) ---
+  evolution-manager:
+    image: atendai/evolution-manager:v2.1.0
+    restart: always
+    ports:
+      - "8181:81"
+    environment:
+      # Aponta para a sua URL pública da API (definida no Coolify)
+      - VITE_API_URL=${EVOLUTION_API_URL}
+    depends_on:
+      - evolution-api
+
 volumes:
   n8n_data:
   postgres_data:
   evolution_instances:
   evolution_store:
-  redis_data: # Novo Volume
+  redis_data:
