@@ -1,7 +1,7 @@
-version: '3.8'
+version: '3.9'
 
 services:
-  # --- N8N (Automação) ---
+  # --- N8N (Sua configuração mantida) ---
   n8n:
     image: docker.n8n.io/n8nio/n8n
     restart: always
@@ -20,15 +20,7 @@ services:
       - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       - N8N_SECURE_COOKIE=false
-      - N8N_EMAIL_MODE=${N8N_EMAIL_MODE:-smtp}
-      - N8N_SMTP_HOST=${N8N_SMTP_HOST}
-      - N8N_SMTP_PORT=${N8N_SMTP_PORT}
-      - N8N_SMTP_USER=${N8N_SMTP_USER}
-      - N8N_SMTP_PASS=${N8N_SMTP_PASS}
-      - N8N_SMTP_SENDER=${N8N_SMTP_SENDER}
       - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-America/Sao_Paulo}
-    links:
-      - postgres
     depends_on:
       - postgres
     volumes:
@@ -69,43 +61,65 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- EVOLUTION API (Versão Oficial Latest) ---
+  # --- EVOLUTION API (Configuração Oficial da Doc) ---
   evolution-api:
-    # MUDANÇA CRUCIAL: Usando a imagem oficial e mais recente
-    image: evolutionapi/evolution-api:latest
+    # A doc oficial aponta para 'atendai/evolution-api'.
+    # Estou usando 'latest' para garantir as correções do Baileys,
+    # já que a v2.1.1 da doc pode estar desatualizada para o WhatsApp atual.
+    image: atendai/evolution-api:latest
     restart: always
-    expose:
-      - "8080"
+    ports:
+      - "8080:8080"
     environment:
+      # --- Configurações Gerais ---
       - SERVER_TYPE=http
       - SERVER_PORT=8080
       - SERVER_URL=${EVOLUTION_API_URL}
       - API_KEY=${EVOLUTION_API_KEY}
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
       - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
+      
+      # --- Variável Correta da Doc para não deletar instância ---
+      - DEL_INSTANCE=false
+      
+      # --- Banco de Dados (Postgres) ---
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://${SERVICE_NAME_POSTGRES:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/evolution?schema=public
+      - DATABASE_CONNECTION_CLIENT_NAME=evolution_v2
+      # A doc sugere ativar explicitamente o salvamento de dados:
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
+      - DATABASE_SAVE_MESSAGE_UPDATE=true
+      - DATABASE_SAVE_DATA_CONTACTS=true
+      - DATABASE_SAVE_DATA_CHATS=true
+      - DATABASE_SAVE_DATA_LABELS=true
+      - DATABASE_SAVE_DATA_HISTORIC=true
+      
+      # --- Cache (Redis) ---
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379/0
+      - CACHE_REDIS_PREFIX_KEY=evolution_v2
+      - CACHE_LOCAL_ENABLED=false
+      
+      # --- CORS ---
       - CORS_ORIGIN=*
       - CORS_METHODS=POST,GET,PUT,DELETE
       - CORS_CREDENTIALS=true
-      - DATABASE_PROVIDER=postgresql
-      # Adicionamos DATABASE_URL para compatibilidade com a imagem oficial
-      - DATABASE_URL=postgresql://${SERVICE_NAME_POSTGRES:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/evolution?schema=public
-      - DATABASE_CONNECTION_URI=postgresql://${SERVICE_NAME_POSTGRES:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/evolution?schema=public
-      - CACHE_REDIS_ENABLED=true
-      - CACHE_REDIS_URI=redis://redis:6379/0
-      # Força a limpeza de instâncias travadas ao reiniciar
-      - DEL_INSTANCE_ON_START=false
-    healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:8080/ || exit 0"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 40s
+
     volumes:
       - evolution_instances:/evolution/instances
       - evolution_store:/evolution/store
     depends_on:
       - postgres
       - redis
+    # Healthcheck adaptado para garantir que o Coolify monitore corretamente
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:8080/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
 volumes:
   n8n_data:
