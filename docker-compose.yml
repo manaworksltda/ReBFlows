@@ -69,14 +69,14 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- EVOLUTION API (O Motor Ajustado) ---
+  # --- EVOLUTION API (O Motor no Padrão 8080) ---
   evolution-api:
     image: atendai/evolution-api:v2.2.2
     restart: always
     environment:
       - SERVER_TYPE=http
-      # MUDANÇA CRUCIAL: Agora roda na porta 80 para alinhar com o roteador
-      - SERVER_PORT=80
+      # VOLTAMOS PARA 8080 (Onde ele é estável)
+      - SERVER_PORT=8080
       - SERVER_URL=${EVOLUTION_API_URL}
       - API_KEY=${EVOLUTION_API_KEY}
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
@@ -89,8 +89,8 @@ services:
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://redis:6379/0
     healthcheck:
-      # MUDANÇA: Healthcheck agora olha na porta 80
-      test: ["CMD", "curl", "http://localhost:80/"]
+      # Testamos na porta certa
+      test: ["CMD", "curl", "http://localhost:8080/"]
       interval: 10s
       timeout: 5s
       retries: 10
