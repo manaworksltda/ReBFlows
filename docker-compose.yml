@@ -1,7 +1,7 @@
 version: '3.9'
 
 services:
-  # --- N8N (Sua configuração mantida) ---
+  # --- N8N (Mantido igual) ---
   n8n:
     image: docker.n8n.io/n8nio/n8n
     restart: always
@@ -32,7 +32,7 @@ services:
       retries: 5
       start_period: 5s
 
-  # --- POSTGRES (Banco de Dados) ---
+  # --- POSTGRES (Mantido igual) ---
   postgres:
     image: postgres:16
     restart: always
@@ -48,7 +48,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- REDIS (Cache) ---
+  # --- REDIS (Mantido igual) ---
   redis:
     image: redis:alpine
     restart: always
@@ -61,33 +61,28 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- EVOLUTION API (Configuração Oficial da Doc) ---
+  # --- EVOLUTION API (Corrigida: Sem 'ports' conflitante) ---
   evolution-api:
-    # A doc oficial aponta para 'atendai/evolution-api'.
-    # Estou usando 'latest' para garantir as correções do Baileys,
-    # já que a v2.1.1 da doc pode estar desatualizada para o WhatsApp atual.
     image: atendai/evolution-api:latest
     restart: always
-    ports:
-      - "8080:8080"
+    # REMOVIDO: ports: - "8080:8080" (Causava o erro)
+    # MANTIDO: expose para o Coolify achar o serviço internamente
+    expose:
+      - "8080"
     environment:
-      # --- Configurações Gerais ---
       - SERVER_TYPE=http
       - SERVER_PORT=8080
       - SERVER_URL=${EVOLUTION_API_URL}
       - API_KEY=${EVOLUTION_API_KEY}
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
       - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
-      
-      # --- Variável Correta da Doc para não deletar instância ---
       - DEL_INSTANCE=false
       
-      # --- Banco de Dados (Postgres) ---
+      # --- Banco de Dados ---
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
       - DATABASE_CONNECTION_URI=postgresql://${SERVICE_NAME_POSTGRES:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/evolution?schema=public
       - DATABASE_CONNECTION_CLIENT_NAME=evolution_v2
-      # A doc sugere ativar explicitamente o salvamento de dados:
       - DATABASE_SAVE_DATA_INSTANCE=true
       - DATABASE_SAVE_DATA_NEW_MESSAGE=true
       - DATABASE_SAVE_MESSAGE_UPDATE=true
@@ -96,7 +91,7 @@ services:
       - DATABASE_SAVE_DATA_LABELS=true
       - DATABASE_SAVE_DATA_HISTORIC=true
       
-      # --- Cache (Redis) ---
+      # --- Cache ---
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://redis:6379/0
       - CACHE_REDIS_PREFIX_KEY=evolution_v2
@@ -113,7 +108,6 @@ services:
     depends_on:
       - postgres
       - redis
-    # Healthcheck adaptado para garantir que o Coolify monitore corretamente
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:8080/ || exit 1"]
       interval: 10s
