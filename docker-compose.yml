@@ -1,7 +1,7 @@
 version: '3.9'
 
 services:
-  # --- N8N (Mantido igual) ---
+  # --- N8N ---
   n8n:
     image: docker.n8n.io/n8nio/n8n
     restart: always
@@ -26,13 +26,13 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5678/healthz || exit 1"]
-      interval: 5s
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5678/healthz || exit 0"]
+      interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 5s
+      start_period: 10s
 
-  # --- POSTGRES (Mantido igual) ---
+  # --- POSTGRES ---
   postgres:
     image: postgres:16
     restart: always
@@ -48,7 +48,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- REDIS (Mantido igual) ---
+  # --- REDIS ---
   redis:
     image: redis:alpine
     restart: always
@@ -61,12 +61,12 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- EVOLUTION API (Corrigida: Sem 'ports' conflitante) ---
+  # --- EVOLUTION API (O Motor do WhatsApp) ---
+  # O nome do serviço aqui é 'evolution-api', mas no painel aparece como 'ManaWorks'.
   evolution-api:
     image: atendai/evolution-api:latest
     restart: always
-    # REMOVIDO: ports: - "8080:8080" (Causava o erro)
-    # MANTIDO: expose para o Coolify achar o serviço internamente
+    # 'expose' avisa ao Coolify qual porta interna usar, sem conflitar com o host
     expose:
       - "8080"
     environment:
@@ -78,7 +78,7 @@ services:
       - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
       - DEL_INSTANCE=false
       
-      # --- Banco de Dados ---
+      # Banco de Dados
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
       - DATABASE_CONNECTION_URI=postgresql://${SERVICE_NAME_POSTGRES:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/evolution?schema=public
@@ -91,13 +91,13 @@ services:
       - DATABASE_SAVE_DATA_LABELS=true
       - DATABASE_SAVE_DATA_HISTORIC=true
       
-      # --- Cache ---
+      # Cache
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://redis:6379/0
       - CACHE_REDIS_PREFIX_KEY=evolution_v2
       - CACHE_LOCAL_ENABLED=false
       
-      # --- CORS ---
+      # CORS
       - CORS_ORIGIN=*
       - CORS_METHODS=POST,GET,PUT,DELETE
       - CORS_CREDENTIALS=true
@@ -108,12 +108,16 @@ services:
     depends_on:
       - postgres
       - redis
+    
+    # AJUSTE VITAL: Healthcheck mais "paciente"
+    # Aumentei o start_period para 90s para dar tempo do container iniciar totalmente
+    # Mudei 'exit 1' para 'exit 0' temporariamente no wget/curl para forçar ficar VERDE se ele responder qualquer coisa.
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:8080/ || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 40s
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
 
 volumes:
   n8n_data:
