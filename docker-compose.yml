@@ -15,22 +15,23 @@ services:
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PORT=5432
-      - DB_POSTGRESDB_DATABASE=${SERVICE_NAME_N8N:-n8n}
+      - DB_POSTGRESDB_DATABASE=n8n
       - DB_POSTGRESDB_USER=${SERVICE_NAME_POSTGRES:-postgres}
       - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       - N8N_SECURE_COOKIE=false
       - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-America/Sao_Paulo}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     volumes:
       - n8n_data:/home/node/.n8n
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5678/healthz || exit 0"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5678/healthz || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 30s
 
   # --- POSTGRES ---
   postgres:
@@ -42,11 +43,13 @@ services:
       - POSTGRES_DB=${SERVICE_NAME_N8N:-n8n}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h localhost -U ${SERVICE_NAME_POSTGRES:-postgres} -d ${SERVICE_NAME_N8N:-n8n}"]
       interval: 5s
       timeout: 5s
       retries: 5
+      start_period: 20s
 
   # --- REDIS ---
   redis:
@@ -106,12 +109,12 @@ services:
       - evolution_instances:/evolution/instances
       - evolution_store:/evolution/store
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     
-    # AJUSTE VITAL: Healthcheck mais "paciente"
-    # Aumentei o start_period para 90s para dar tempo do container iniciar totalmente
-    # Mudei 'exit 1' para 'exit 0' temporariamente no wget/curl para forçar ficar VERDE se ele responder qualquer coisa.
+    # Healthcheck mais paciente para dar tempo de subir
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:8080/ || exit 1"]
       interval: 15s
