@@ -73,9 +73,10 @@ services:
     # 'expose' avisa ao Coolify qual porta interna usar, sem conflitar com o host
     expose:
       - "8080"
-    # Se não houver Traefik/ingress, publica a porta no host
+    # Se quiser acesso direto sem Traefik/ingress, use uma porta configurável no host
+    # Ajuste EVOLUTION_API_PORT no .env se 18080 já estiver em uso
     ports:
-      - "8080:8080"
+      - "${EVOLUTION_API_PORT:-18080}:8080"
     environment:
       - SERVER_TYPE=http
       - SERVER_PORT=8080
